@@ -1,0 +1,26 @@
+{
+    "servers": {
+        "1": {"name": "Docker", "server": "docker", "user": "digit", "host": "172.20.96.20"},
+        "2": {"name": "Nextcloud", "server": "docker", "user": "digit", "host": "172.20.96.16"},
+        "3": {"name": "SFTP Server 1", "server": "sftp", "user": "digit", "host": "172.20.96.22"},
+        "4": {"name": "SFTP Server 2", "server": "sftp", "user": "fortinet", "host": "172.20.96.22"}
+        "5": {"name": "Nakivo", "server": "Nakivo", "user": "root", "host": "172.20.10.101"}
+        "6": {"name": "UNMS", "server": "UNMS", "user": "tbd", "host": "172.20.96.12"}
+        "7": {"name": "CCTV", "server": "cctv", "user": "digit", "host": "172.20.96.18"}
+    },
+    "docker_containers": {
+        "172.20.96.20": {
+            "1": {"name": "Grafana", "container_id": "grafana"},
+            "2": {"name": "Homepage", "container_id": "homepage"},
+            "3": {"name": "InfluxDB", "container_id": "influxdb"}
+            "4": {"name": "Prometheus", "container_id": "prometheus"},
+            "5": {"name": "Telegraf", "container_id": "tig-telegraf-1"},
+            "6": {"name": "Uptime Kuma", "container_id": "uptime-kuma"}
+        },
+        "nextcloud_containers": {
+            "1": {"name": "Container 1 on Nextcloud", "container_id": "container4_id_or_name"},
+            "2": {"name": "Container 2 on Nextcloud", "container_id": "container5_id_or_name"},
+            "3": {"name": "Container 3 on Nextcloud", "container_id": "container6_id_or_name"}
+        }
+    }
+}
