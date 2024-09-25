@@ -1,0 +1,6 @@
+{
+    "ssh_user": "your_username",
+    "ssh_host": "your_host_ip",
+    "script_path": "/path/to/your/script.py"
+}
+

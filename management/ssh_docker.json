@@ -1,0 +1,26 @@
+{
+  "servers": {
+    "1": {
+      "name": "SFTP",
+      "user": "digit",
+      "host": "172.20.96.22",
+      "type": "sftp"
+    },
+    "2": {
+      "name": "Docker",
+      "user": "digit",
+      "host": "172.20.96.20",
+      "type": "docker"
+    }
+  },
+  "docker_containers": {
+    "172.20.96.20": {
+      "1": {
+        "name": "grafana"
+      },
+      "2": {
+        "name": "influxdb"
+      }
+    }
+  }
+}

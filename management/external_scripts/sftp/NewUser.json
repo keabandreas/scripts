@@ -1,0 +1,6 @@
+{
+    "ssh_user": "digit",
+    "ssh_host": "172.20.96.22",
+    "script_path": "/digit/scripts/useradd.py"
+}
+
