@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 import requests
 from typing import Dict, Tuple, Optional
 import logging
+import json  # Add this import
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -21,7 +22,15 @@ logger = logging.getLogger(__name__)
 
 # Constants
 SFTP_ROOT = "/srv/sftp"
-SLACK_WEBHOOK_URL = "https://hooks.slack.com/services/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"
+
+# Load Slack webhook URL from slack.json
+try:
+    with open('slack.json') as f:
+        slack_config = json.load(f)
+    SLACK_WEBHOOK_URL = slack_config['webhook_url']
+except (FileNotFoundError, json.JSONDecodeError, KeyError) as e:
+    logger.error(f"Failed to load Slack webhook URL: {e}")
+    sys.exit(1)
 
 def clear_screen():
     """Clear the console screen."""
