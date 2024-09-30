@@ -1,0 +1,92 @@
+#!/bin/bash
+
+# Load configurations
+config=$(cat $HOME/lib/scripts/work/management/ssh_docker.json)
+
+# Define the path for predefined scripts
+
+SCRIPTS_DIR="$HOME/lib/scripts/work/management/ssh"
+
+# Function to parse JSON (requires jq)
+parse_json() {
+    echo "$1" | jq -r "$2"
+}
+
+# SSH connection function
+ssh_connect() {
+    local key="$1"
+    local user=$(parse_json "$config" ".servers[\"$key\"].user")
+    local host=$(parse_json "$config" ".servers[\"$key\"].host")
+    echo "Connecting to $user@$host..."
+    ssh "$user@$host"
+}
+
+# Function to list and select predefined scripts
+select_predefined_script() {
+    if [ ! -d "$SCRIPTS_DIR" ]; then
+        echo "Error: Scripts directory not found: $SCRIPTS_DIR" >&2
+        exit 1
+    fi
+
+    local scripts=($(ls "$SCRIPTS_DIR"/*.sh 2>/dev/null))
+    if [ ${#scripts[@]} -eq 0 ]; then
+        echo "No scripts found in $SCRIPTS_DIR" >&2
+        exit 1
+    fi
+
+    local script_names=()
+    for script in "${scripts[@]}"; do
+        script_names+=("$(basename "$script")")
+    done
+
+    local selected_script=$(printf '%s\n' "${script_names[@]}" | rofi -dmenu -p "Select a script")
+    if [ -n "$selected_script" ]; then
+        echo "$SCRIPTS_DIR/$selected_script"
+    fi
+}
+
+# Function to run a script on the remote server
+run_script() {
+    local key="$1"
+    local user=$(parse_json "$config" ".servers[\"$key\"].user")
+    local host=$(parse_json "$config" ".servers[\"$key\"].host")
+    
+    local script_path=$(select_predefined_script)
+    
+    if [ -n "$script_path" ] && [ -f "$script_path" ]; then
+        echo "Running script $script_path on $user@$host..."
+        ssh "$user@$host" 'bash -s' < "$script_path"
+    else
+        echo "Error: Invalid script selection" >&2
+        exit 1
+    fi
+}
+
+# Main menu
+main_menu() {
+    local servers=$(parse_json "$config" '.servers | to_entries[] | "\(.key):\(.value.name) (\(.value.user)@\(.value.host))"')
+    local server_choice=$(echo "$servers" | rofi -dmenu -p "Select SSH Server" -i)
+    
+    if [ -n "$server_choice" ]; then
+        local key=$(echo "$server_choice" | cut -d':' -f1)
+        
+        # Second prompt for Connect or Run Script
+        local action=$(echo -e "Connect\nRun Script" | rofi -dmenu -p "Choose action" -i)
+        
+        case "$action" in
+            "Connect")
+                ssh_connect "$key"
+                ;;
+            "Run Script")
+                run_script "$key"
+                ;;
+            *)
+                echo "Invalid action selected" >&2
+                exit 1
+                ;;
+        esac
+    fi
+}
+
+# Start the script
+main_menu

@@ -1,10 +1,13 @@
 #!/bin/bash
 
 # Load configurations
-config=$(cat ssh_docker.json)
+config=$(cat $HOME/lib/scripts/work/management/ssh_docker.json)
 
 # Define the path for predefined scripts
 SCRIPTS_DIR="$HOME/lib/scripts/work/management/ssh"
+
+# Set your preferred terminal emulator here
+TERMINAL="kitty"
 
 # Function to parse JSON (requires jq)
 parse_json() {
@@ -17,7 +20,7 @@ ssh_connect() {
     local user=$(parse_json "$config" ".servers[\"$key\"].user")
     local host=$(parse_json "$config" ".servers[\"$key\"].host")
     echo "Connecting to $user@$host..."
-    ssh "$user@$host"
+    $TERMINAL -e ssh "$user@$host" &
 }
 
 # Function to list and select predefined scripts
@@ -54,7 +57,7 @@ run_script() {
     
     if [ -n "$script_path" ] && [ -f "$script_path" ]; then
         echo "Running script $script_path on $user@$host..."
-        ssh "$user@$host" 'bash -s' < "$script_path"
+        $TERMINAL -e bash -c "ssh $user@$host 'bash -s' < \"$script_path\"; exec bash" &
     else
         echo "Error: Invalid script selection" >&2
         exit 1

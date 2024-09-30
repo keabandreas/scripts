@@ -3,12 +3,12 @@
 # ============= Configuration Section =============
 # Predefined paths
 CONFIG_FILE="$HOME/lib/scripts/work/management/ssh_docker.json"
-SCRIPTS_DIR="$HOME/lib/scripts/work/management/rofi"
+SCRIPTS_DIR="$HOME/lib/scripts/work/management"
 
 # Define your scripts here
 # Format: SCRIPTS["Menu Name"]="path/to/script.sh"
 declare -A SCRIPTS
-SCRIPTS["SSH"]="$SCRIPTS_DIR/ssh-rofi-script.sh"
+SCRIPTS["SSH"]="$SCRIPTS_DIR/ssh-runtime.sh"
 SCRIPTS["Docker"]="$SCRIPTS_DIR/docker-rofi-script.sh"
 SCRIPTS["Git"]="$SCRIPTS_DIR/git-rofi-script.sh"
 
