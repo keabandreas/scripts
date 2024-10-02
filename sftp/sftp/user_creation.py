@@ -3,18 +3,14 @@
 import os
 import sys
 import pwd
-import spwd
-import crypt
-import shutil
 import grp
 import random
 import string
 import subprocess
 from datetime import datetime, timedelta
-import requests
 from typing import Dict, Tuple, Optional
 import logging
-import json  # Add this import
+from email_sender import send_email, create_html_email
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -22,15 +18,7 @@ logger = logging.getLogger(__name__)
 
 # Constants
 SFTP_ROOT = "/srv/sftp"
-
-# Load Slack webhook URL from slack.json
-try:
-    with open('slack.json') as f:
-        slack_config = json.load(f)
-    SLACK_WEBHOOK_URL = slack_config['webhook_url']
-except (FileNotFoundError, json.JSONDecodeError, KeyError) as e:
-    logger.error(f"Failed to load Slack webhook URL: {e}")
-    sys.exit(1)
+CREDENTIALS_DIR = "/root/credentials"
 
 def clear_screen():
     """Clear the console screen."""
@@ -62,10 +50,10 @@ def generate_password(length: int = 12) -> str:
 def create_user(username: str, password: str, expiration_time: datetime) -> None:
     """Create a new SFTP user with the given username and password."""
     try:
-        subprocess.run(['useradd', '-m', '-d', f'{SFTP_ROOT}/{username}', '-s', '/usr/sbin/nologin', username], check=True)
+        subprocess.run(['useradd', '-m', '-d', f'{SFTP_ROOT}/{username}', '-s', '/usr/sbin/nologin', '-G', 'sftp', username], check=True)
         subprocess.run(['chpasswd'], input=f'{username}:{password}'.encode(), check=True)
         subprocess.run(['chage', '-E', expiration_time.strftime('%Y-%m-%d'), username], check=True)
-        logger.info(f"User {username} created successfully.")
+        logger.info(f"User {username} created successfully and added to sftp group.")
     except subprocess.CalledProcessError as e:
         logger.error(f"Failed to create user {username}: {e}")
         raise
@@ -98,7 +86,7 @@ def remove_bash_files(username: str) -> None:
 def schedule_deletion(username: str, expiration_time: datetime) -> None:
     """Schedule the deletion of the user and their data."""
     cron_time = expiration_time.strftime('%M %H %d %m *')
-    cron_command = f'{cron_time} userdel -r {username} && rm -rf {SFTP_ROOT}/{username} && rm -f /root/{username}_credentials.txt'
+    cron_command = f'{cron_time} userdel -r {username} && rm -rf {SFTP_ROOT}/{username} && rm -f {CREDENTIALS_DIR}/{username}_credentials.txt'
     try:
         current_crontab = subprocess.run(['crontab', '-l'], capture_output=True, text=True, check=True).stdout
         new_crontab = current_crontab + cron_command + '\n'
@@ -106,17 +94,6 @@ def schedule_deletion(username: str, expiration_time: datetime) -> None:
         logger.info(f"Scheduled deletion for {username} at {expiration_time}.")
     except subprocess.CalledProcessError as e:
         logger.error(f"Failed to schedule deletion for {username}: {e}")
-        raise
-
-def send_slack_notification(message: str) -> None:
-    """Send a notification to Slack using the webhook URL."""
-    payload = {"text": message}
-    try:
-        response = requests.post(SLACK_WEBHOOK_URL, json=payload)
-        response.raise_for_status()
-        logger.info("Slack notification sent successfully.")
-    except requests.RequestException as e:
-        logger.error(f"Failed to send Slack notification: {e}")
         raise
 
 def get_department_selection():
@@ -131,7 +108,7 @@ def get_department_selection():
             return departments[int(dept_choice) - 1]
         print("║ Invalid choice. Please enter a number from the list.")
 
-def get_user_info() -> Tuple[str, Dict[str, str], Optional[timedelta]]:
+def get_user_info() -> Tuple[str, Dict[str, str], Optional[timedelta], str]:
     """Collect user information interactively."""
     clear_screen()
     print_box("User Information", "Please provide the following information:")
@@ -139,6 +116,17 @@ def get_user_info() -> Tuple[str, Dict[str, str], Optional[timedelta]]:
     username = get_input("Enter a username")
     while not username:
         username = get_input("Username cannot be empty. Please enter a username")
+
+    password_option = get_input("Choose password option: (1) Fill password, (2) Randomize password")
+    while password_option not in ['1', '2']:
+        password_option = get_input("Invalid option. Please enter 1 to fill password or 2 to randomize")
+
+    if password_option == '1':
+        password = get_input("Enter password")
+        while not password:
+            password = get_input("Password cannot be empty. Please enter a password")
+    else:
+        password = generate_password()
 
     first_name = get_input("Enter first name")
     while not first_name:
@@ -160,27 +148,29 @@ def get_user_info() -> Tuple[str, Dict[str, str], Optional[timedelta]]:
             "First name": first_name,
             "Last name": last_name,
             "Department": department,
-            "Email": email
+            "Email": email,
+            "User Type": "Internal"
         }
     else:
         print_box("External User Information", "Please provide the following information:")
         company = get_input("Enter company")
         karlshamn_department = get_department_selection()
-        superior_first_name = get_input("Enter superior's first name")
-        while not superior_first_name:
-            superior_first_name = get_input("Superior's first name cannot be empty. Please enter a first name")
-        superior_last_name = get_input("Enter superior's last name")
-        while not superior_last_name:
-            superior_last_name = get_input("Superior's last name cannot be empty. Please enter a last name")
-        superior_email = f"{superior_first_name.lower()}.{superior_last_name.lower()}@karlshamnenergi.se"
+        responsible_first_name = get_input("Enter responsible internally's first name")
+        while not responsible_first_name:
+            responsible_first_name = get_input("Responsible internally's first name cannot be empty. Please enter a first name")
+        responsible_last_name = get_input("Enter responsible internally's last name")
+        while not responsible_last_name:
+            responsible_last_name = get_input("Responsible internally's last name cannot be empty. Please enter a last name")
+        responsible_email = f"{responsible_first_name.lower()}.{responsible_last_name.lower()}@karlshamnenergi.se"
         user_info = {
             "First name": first_name,
             "Last name": last_name,
             "Company": company,
             "Handled by department": karlshamn_department,
-            "Superior first name": superior_first_name,
-            "Superior last name": superior_last_name,
-            "Superior email": superior_email
+            "Responsible internally first name": responsible_first_name,
+            "Responsible internally last name": responsible_last_name,
+            "Responsible internally email": responsible_email,
+            "User Type": "External"
         }
 
     clear_screen()
@@ -202,16 +192,21 @@ def get_user_info() -> Tuple[str, Dict[str, str], Optional[timedelta]]:
         deletion_time = timedelta(days=30)
     # For option '5', deletion_time remains None
 
-    return username, user_info, deletion_time
+    return username, user_info, deletion_time, password
 
 def delete_user(username):
-    """Delete a user and their home directory."""
+    """Delete a user, their home directory, and their credentials file."""
     try:
         subprocess.run(['userdel', '-r', username], check=True)
-        logger.info(f"User {username} deleted successfully.")
+        credentials_file = os.path.join(CREDENTIALS_DIR, f'{username}_credentials.txt')
+        if os.path.exists(credentials_file):
+            os.remove(credentials_file)
+        logger.info(f"User {username} and their credentials file deleted successfully.")
     except subprocess.CalledProcessError as e:
         logger.error(f"Failed to delete user {username}: {e}")
         raise
+    except OSError as e:
+        logger.error(f"Failed to delete credentials file for {username}: {e}")
 
 def reset_password(username):
     """Reset password for a given user."""
@@ -238,20 +233,19 @@ def main():
         logger.error("This script must be run as root.")
         sys.exit(1)
 
+    os.makedirs(CREDENTIALS_DIR, exist_ok=True)
+
     while True:
         clear_screen()
         print_box("SFTP User Management", "1. Create User\n2. Delete User\n3. Reset Password\n4. Set Quota\n5. Exit")
         choice = get_input("Enter your choice (1-5)")
 
         if choice == '1':
-            # Existing user creation logic
-            username, user_info, deletion_time = get_user_info()
-            password = generate_password()
+            username, user_info, deletion_time, password = get_user_info()
             create_user(username, password, datetime.max if deletion_time is None else datetime.now() + deletion_time)
             setup_directory(username)
             remove_bash_files(username)
-            
-            # Schedule deletion if a deletion time was chosen
+
             if deletion_time:
                 expiration_time = datetime.now() + deletion_time
                 schedule_deletion(username, expiration_time)
@@ -259,25 +253,33 @@ def main():
             else:
                 deletion_info = "The user account has no scheduled deletion."
 
-            # Prepare credentials information
-            credentials = [f"{k}: {v}" for k, v in user_info.items()]
-            credentials.extend([
-                f"Username: {username}",
-                f"Password: {password}",
-                f"User directory: {SFTP_ROOT}/{username}",
-                deletion_info
-            ])
-            credentials_str = "\n".join(credentials)
+            user_directory = f"{SFTP_ROOT}/{username}"
 
-            # Save credentials to a file
-            with open(f'/root/{username}_credentials.txt', 'w') as f:
-                f.write(credentials_str)
+            email_content = {
+                "Username": username,
+                "Password": password,
+                "User Directory": user_directory,
+                "Deletion Info": deletion_info,
+                "User Type": user_info["User Type"]
+            }
+            email_content.update(user_info)
 
-            # Send Slack notification with user credentials
-            slack_message = f"New SFTP User Created:\n{credentials_str}"
-            send_slack_notification(slack_message)
+            html_content = create_html_email(f"{USERNAME} upplagd på KEAB SFTP", email_content, "Vid frågor, kontakta Digit på it@karlshamnenergi.se.")
 
-            print_box("User Creation Successful", f"User {username} created successfully.\n{deletion_info}\nCredentials have been sent via Slack.")
+            credentials_file = os.path.join(CREDENTIALS_DIR, f'{username}_credentials.txt')
+            with open(credentials_file, 'w') as f:
+                f.write(html_content)
+
+            # Send email to the appropriate recipient and always to it@karlshamnenergi.se
+            recipients = ["it@karlshamnenergi.se"]
+            if user_info["User Type"] == "Internal":
+                recipients.append(user_info["Email"])
+            else:  # External user
+                recipients.append(user_info["Responsible internally email"])
+
+            send_email(f"Användare {USERNAME}", html_content, recipients)
+
+            print_box("User Creation Successful", f"User {username} created successfully.\n{deletion_info}\nCredentials have been saved to {credentials_file} and sent via email.")
 
         elif choice == '2':
             username = get_input("Enter username to delete")
