@@ -292,7 +292,7 @@
             {
                 type: 'conclusion',
                 content: `
-                    <h2>Training Complete</h2>
+                    <h2><center>Training Complete</center></h2>
                     <p>Thank you for completing the Karlshamn Energi security training. Your commitment to maintaining our high security standards is appreciated.</p>
                     <p>Please fill out the form below to receive your completion certificate:</p>
                     <form id="completionForm">
@@ -303,6 +303,10 @@
                         <div class="form-group">
                             <label for="lastName">Last Name:</label>
                             <input type="text" id="lastName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="company">Company:</label>
+                            <input type="text" id="company" required>
                         </div>
                         <div class="form-group">
                             <label for="email">Email:</label>
@@ -370,9 +374,10 @@
         function submitForm() {
             const firstName = document.getElementById('firstName').value;
             const lastName = document.getElementById('lastName').value;
+            const company = document.getElementById('company').value;
             const email = document.getElementById('email').value;
 
-            if (firstName && lastName && email) {
+            if (firstName && lastName && company && email) {
                 // In a real application, you would send this data to a server
                 // Here, we'll just simulate sending an email
                 alert(`Thank you, ${firstName} ${lastName}! An email notification has been sent to andreas.bergholtz@karlshamnenergi.se`);
