@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Karlshamn Energi Training</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f0f0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .slide {
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            margin-bottom: 20px;
+        }
+        h1, h2 {
+            color: #2c3e50;
+        }
+        .progress-bar {
+            background-color: #e0e0e0;
+            height: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .progress {
+            background-color: #27ae60;
+            height: 100%;
+            border-radius: 5px;
+            transition: width 0.3s ease;
+        }
+        .button-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        button {
+            background-color: #27ae60;
+            border: none;
+            color: white;
+            padding: 10px 100px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #2ecc71;
+        }
+        .option-button {
+            margin: 0 10px;
+        }
+        .feedback {
+            font-weight: bold;
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .correct {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .incorrect {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .logo {
+            max-width: 100%;
+            height: auto;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .info-slide {
+            background-color: #e8f4f8;
+            border-left: 5px solid #27ae60;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Karlshamn Energi Training</h1>
+        <div class="progress-bar">
+            <div class="progress" id="progress"></div>
+        </div>
+        <div id="slideContainer"></div>
+    </div>
+
+    <script>
+        const slides = [
+            {
+                type: 'introduction',
+                content: `
+                    <img src="https://im16.inviewer.se/skiss/99/99KEOU1WQI.jpg" alt="Karlshamn Energi Logo" class="logo">
+                    <h2>Welcome to Karlshamn Energi</h2>
+                    <p>It is important to us that security around our operations is maintained at a high level. We are a socially critical operation, and with that comes great responsibility. This responsibility also applies to you who are hired in some form by us. The rules of order and safety presented in this training are just a brief compilation of the regulations we are subject to.</p>
+                `
+            },
+            {
+                type: 'info',
+                content: `
+                    <h2>Information Security</h2>
+                    <div class="info-slide">
+                        <p>The information about Karlshamn Energi's operations that you gain access to in connection with your assignment at the company is confidential information, regardless of whether it is oral or written.</p>
+                    </div>
+                `
+            },
+            {
+                type: 'info',
+                content: `
+                    <h2>Information Security</h2>
+                    <div class="info-slide">
+                        <p>The information about Karlshamn Energi's operations that you gain access to in connection with your assignment at the company is confidential information, regardless of whether it is oral or written.</p>
+                    </div>
+                `
+            },
+            {
+                type: 'info',
+                content: `
+                    <h2>Information Security</h2>
+                    <div class="info-slide">
+                        <p>The information about Karlshamn Energi's operations that you gain access to in connection with your assignment at the company is confidential information, regardless of whether it is oral or written.</p>
+                    </div>
+                `
+            },
+            {
+                type: 'info',
+                content: `
+                    <h2>Information Security</h2>
+                    <div class="info-slide">
+                        <p>The information about Karlshamn Energi's operations that you gain access to in connection with your assignment at the company is confidential information, regardless of whether it is oral or written.</p>
+                    </div>
+                `
+            },
+            {
+                type: 'info',
+                content: `
+                    <h2>Information Security</h2>
+                    <div class="info-slide">
+                        <p>The information about Karlshamn Energi's operations that you gain access to in connection with your assignment at the company is confidential information, regardless of whether it is oral or written.</p>
+                    </div>
+                `
+            },
+            {
+                type: 'info',
+                content: `
+                    <h2>Information Security</h2>
+                    <div class="info-slide">
+                        <p>The information about Karlshamn Energi's operations that you gain access to in connection with your assignment at the company is confidential information, regardless of whether it is oral or written.</p>
+                    </div>
+                `
+            },
+            {
+                type: 'question',
+                content: `
+                    <h2>Question 1</h2>
+                    <p>Are you allowed to let people you know into the facility?</p>
+                `,
+                options: ['Yes', 'No'],
+                correctAnswer: 'Yes',
+                explanation: 'You may let in people you know who have permission to be in the area & employees you recognize from Karlshamn Energi.'
+            },
+            {
+                type: 'info',
+                content: `
+                    <h2>Information Security</h2>
+                    <div class="info-slide">
+                        <p>The information about Karlshamn Energi's operations that you gain access to in connection with your assignment at the company is confidential information, regardless of whether it is oral or written.</p>
+                    </div>
+                `
+            },
+            {
+                type: 'info',
+                content: `
+                    <h2>Information Security</h2>
+                    <div class="info-slide">
+                        <p>The information about Karlshamn Energi's operations that you gain access to in connection with your assignment at the company is confidential information, regardless of whether it is oral or written.</p>
+                    </div>
+                `
+            },
+            {
+                type: 'info',
+                content: `
+                    <h2>Information Security</h2>
+                    <div class="info-slide">
+                        <p>The information about Karlshamn Energi's operations that you gain access to in connection with your assignment at the company is confidential information, regardless of whether it is oral or written.</p>
+                    </div>
+                `
+            },
+            {
+                type: 'question',
+                content: `
+                    <h2>Question 1</h2>
+                    <p>Are you allowed to let people you know into the facility?</p>
+                `,
+                options: ['Yes', 'No'],
+                correctAnswer: 'Yes',
+                explanation: 'You may let in people you know who have permission to be in the area & employees you recognize from Karlshamn Energi.'
+            },
+            {
+                type: 'question',
+                content: `
+                    <h2>Question 1</h2>
+                    <p>Are you allowed to let people you know into the facility?</p>
+                `,
+                options: ['Yes', 'No'],
+                correctAnswer: 'Yes',
+                explanation: 'You may let in people you know who have permission to be in the area & employees you recognize from Karlshamn Energi.'
+            },
+            {
+                type: 'info',
+                content: `
+                    <h2>Information Security</h2>
+                    <div class="info-slide">
+                        <p>The information about Karlshamn Energi's operations that you gain access to in connection with your assignment at the company is confidential information, regardless of whether it is oral or written.</p>
+                    </div>
+                `
+            },
+            {
+                type: 'info',
+                content: `
+                    <h2>Information Security</h2>
+                    <div class="info-slide">
+                        <p>The information about Karlshamn Energi's operations that you gain access to in connection with your assignment at the company is confidential information, regardless of whether it is oral or written.</p>
+                    </div>
+                `
+            },
+            {
+                type: 'info',
+                content: `
+                    <h2>Information Security</h2>
+                    <div class="info-slide">
+                        <p>The information about Karlshamn Energi's operations that you gain access to in connection with your assignment at the company is confidential information, regardless of whether it is oral or written.</p>
+                    </div>
+                `
+            },
+            {
+                type: 'info',
+                content: `
+                    <h2>Information Security</h2>
+                    <div class="info-slide">
+                        <p>The information about Karlshamn Energi's operations that you gain access to in connection with your assignment at the company is confidential information, regardless of whether it is oral or written.</p>
+                    </div>
+                `
+            },
+            {
+                type: 'question',
+                content: `
+                    <h2>Question 1</h2>
+                    <p>Are you allowed to let people you know into the facility?</p>
+                `,
+                options: ['Yes', 'No'],
+                correctAnswer: 'Yes',
+                explanation: 'You may let in people you know who have permission to be in the area & employees you recognize from Karlshamn Energi.'
+            },
+            {
+                type: 'conclusion',
+                content: `
+                    <h2>Training Complete</h2>
+                    <p>Thank you for completing the Karlshamn Energi security training. Your commitment to maintaining our high security standards is appreciated.</p>
+                    <p>Please fill out the form below to receive your completion certificate:</p>
+                    <form id="completionForm">
+                        <div class="form-group">
+                            <label for="firstName">First Name:</label>
+                            <input type="text" id="firstName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="lastName">Last Name:</label>
+                            <input type="text" id="lastName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="email">Email:</label>
+                            <input type="email" id="email" required>
+                        </div>
+                    </form>
+                `
+            }
+        ];
+
+        let currentSlide = 0;
+        const slideContainer = document.getElementById('slideContainer');
+        const progressBar = document.getElementById('progress');
+
+        function renderSlide() {
+            const slide = slides[currentSlide];
+            let slideContent = `<div class="slide">`;
+            slideContent += slide.content;
+
+            if (slide.type === 'question') {
+                slideContent += `<div class="button-container">`;
+                slide.options.forEach(option => {
+                    slideContent += `<button class="option-button" onclick="checkAnswer('${option}')">${option}</button>`;
+                });
+                slideContent += `</div><div id="feedback" class="feedback"></div>`;
+            } else if (slide.type === 'conclusion') {
+                slideContent += `<div class="button-container"><button onclick="submitForm()">Send</button></div>`;
+            } else {
+                slideContent += `<div class="button-container"><button onclick="nextSlide()">Next</button></div>`;
+            }
+
+            slideContent += `</div>`;
+            slideContainer.innerHTML = slideContent;
+            updateProgress();
+        }
+
+        function checkAnswer(answer) {
+            const slide = slides[currentSlide];
+            const feedbackElement = document.getElementById('feedback');
+            if (answer === slide.correctAnswer) {
+                feedbackElement.textContent = `Correct! ${slide.explanation}`;
+                feedbackElement.className = 'feedback correct';
+                setTimeout(nextSlide, 2000);
+            } else {
+                feedbackElement.textContent = `Incorrect. ${slide.explanation} Please try again.`;
+                feedbackElement.className = 'feedback incorrect';
+            }
+        }
+
+        function nextSlide() {
+            currentSlide++;
+            if (currentSlide < slides.length) {
+                renderSlide();
+            } else {
+                slideContainer.innerHTML = `<div class="slide"><h2>All Done!</h2><p>You have completed the training.</p></div>`;
+                updateProgress();
+            }
+        }
+
+        function updateProgress() {
+            const progress = ((currentSlide + 1) / slides.length) * 100;
+            progressBar.style.width = `${progress}%`;
+        }
+
+        function submitForm() {
+            const firstName = document.getElementById('firstName').value;
+            const lastName = document.getElementById('lastName').value;
+            const email = document.getElementById('email').value;
+
+            if (firstName && lastName && email) {
+                // In a real application, you would send this data to a server
+                // Here, we'll just simulate sending an email
+                alert(`Thank you, ${firstName} ${lastName}! An email notification has been sent to andreas.bergholtz@karlshamnenergi.se`);
+                
+                // In a real scenario, you would make an AJAX call to your server here
+                // The server would then send the email
+                console.log(`Email sent to andreas.bergholtz@karlshamnenergi.se: ${firstName} ${lastName} (${email}) has completed the training.`);
+            } else {
+                alert('Please fill out all fields before submitting.');
+            }
+        }
+
+        renderSlide();
+    </script>
+</body>
+</html>
