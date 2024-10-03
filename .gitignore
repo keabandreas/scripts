@@ -1,5 +1,5 @@
 # Ignore configuration file
-/fjarrvarme/config.py
+/json/
 
 # Ignore log files
 *.log
