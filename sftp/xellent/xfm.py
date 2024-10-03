@@ -3,15 +3,12 @@ import os
 import shutil
 import logging
 from datetime import datetime
-import sys
 import json
 
-# Add the directory containing error_email.py to the Python path
-sys.path.append(os.path.expanduser('~/scripts/sftp'))
-from error_email import send_error_email
-
 # Load configuration
-with open('xellent/config.json', 'r') as config_file:
+script_dir = os.path.dirname(os.path.abspath(__file__))
+config_path = os.path.join(script_dir, 'config.json')
+with open(config_path, 'r') as config_file:
     config = json.load(config_file)
 
 # Configuration
@@ -67,8 +64,7 @@ def main():
     except Exception as e:
         error_message = f"An error occurred: {str(e)}"
         logging.error(error_message)
-        send_error_email("Xellent File Mover Script", error_message)
-        raise
+        # Error is logged but no email is sent
 
 if __name__ == "__main__":
     main()
