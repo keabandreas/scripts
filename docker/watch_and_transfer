@@ -1,0 +1,163 @@
+#!/bin/bash
+
+# Load configuration from JSON
+CONFIG_FILE="/home/digit/watch_transfer_config.json"
+
+if [ ! -f "$CONFIG_FILE" ]; then
+    echo "Configuration file not found: $CONFIG_FILE"
+    exit 1
+fi
+
+# Function to read JSON values
+get_json_value() {
+    local key=$1
+    jq -r "$key" "$CONFIG_FILE"
+}
+
+# Load configuration
+LOCAL_WATCH_DIR=$(get_json_value '.local.watch_dir')
+LOCAL_STORAGE_DIR=$(get_json_value '.local.storage_dir')
+SFTP_HOST=$(get_json_value '.remote.host')
+SFTP_USER=$(get_json_value '.remote.user')
+SFTP_PASS=$(get_json_value '.remote.password')
+REMOTE_DIR=$(get_json_value '.remote.dir')
+REMOTE_WATCH_DIR=$(get_json_value '.remote.watch_dir')
+REMOTE_CHECK_INTERVAL=$(get_json_value '.settings.check_interval')
+
+# Validate configuration
+if [ -z "$LOCAL_WATCH_DIR" ] || [ -z "$LOCAL_STORAGE_DIR" ] || [ -z "$SFTP_HOST" ] || \
+   [ -z "$SFTP_USER" ] || [ -z "$SFTP_PASS" ] || [ -z "$REMOTE_DIR" ] || \
+   [ -z "$REMOTE_WATCH_DIR" ] || [ -z "$REMOTE_CHECK_INTERVAL" ]; then
+    echo "Error: Missing required configuration values"
+    exit 1
+fi
+
+# Enable debug output
+set -x
+
+# Function to transfer file to SFTP
+upload_file() {
+    local file="$1"
+    echo "Attempting to upload file: $file"
+    
+    TMPSCRIPT=$(mktemp)
+    cat << EOF > "$TMPSCRIPT"
+open sftp://${SFTP_USER}:'${SFTP_PASS}'@${SFTP_HOST}
+set net:max-retries 3
+set net:timeout 10
+cd "${REMOTE_DIR}"
+pwd
+put "${file}"
+bye
+EOF
+
+    lftp -f "$TMPSCRIPT"
+    TRANSFER_STATUS=$?
+    rm -f "$TMPSCRIPT"
+    
+    if [ $TRANSFER_STATUS -eq 0 ]; then
+        echo "Successfully uploaded: $file"
+    else
+        echo "Failed to upload: $file (Exit code: $TRANSFER_STATUS)"
+    fi
+}
+
+# Function to download file from SFTP
+download_file() {
+    local remote_file="$1"
+    echo "Attempting to download file: $remote_file"
+    
+    TMPSCRIPT=$(mktemp)
+    cat << EOF > "$TMPSCRIPT"
+open sftp://${SFTP_USER}:'${SFTP_PASS}'@${SFTP_HOST}
+set net:max-retries 3
+set net:timeout 10
+cd "${REMOTE_WATCH_DIR}"
+get "${remote_file}" -o "${LOCAL_STORAGE_DIR}/"
+rm -f "${remote_file}"
+bye
+EOF
+
+    lftp -f "$TMPSCRIPT"
+    TRANSFER_STATUS=$?
+    rm -f "$TMPSCRIPT"
+    
+    if [ $TRANSFER_STATUS -eq 0 ]; then
+        echo "Successfully downloaded: $remote_file to ${LOCAL_STORAGE_DIR}"
+    else
+        echo "Failed to download: $remote_file (Exit code: $TRANSFER_STATUS)"
+    fi
+}
+
+# Function to check remote directory for new files
+check_remote_files() {
+    TMPSCRIPT=$(mktemp)
+    cat << EOF > "$TMPSCRIPT"
+open sftp://${SFTP_USER}:'${SFTP_PASS}'@${SFTP_HOST}
+set net:max-retries 3
+set net:timeout 10
+cd "${REMOTE_WATCH_DIR}"
+cls -1 --sort=date
+bye
+EOF
+
+    # Get list of remote files
+    remote_files=$(lftp -f "$TMPSCRIPT" | grep -v "^$")
+    rm -f "$TMPSCRIPT"
+
+    if [ ! -z "$remote_files" ]; then
+        echo "Found files in remote watch folder:"
+        while IFS= read -r file; do
+            echo "Processing remote file: $file"
+            download_file "$file"
+        done <<< "$remote_files"
+    fi
+}
+
+# Ensure local storage directory exists
+mkdir -p "${LOCAL_STORAGE_DIR}"
+
+echo "Starting watch on $LOCAL_WATCH_DIR"
+
+# First, transfer any existing local files
+echo "Checking for existing local files..."
+for file in "$LOCAL_WATCH_DIR"/*; do
+    if [ -f "$file" ]; then
+        echo "Found existing file: $file"
+        upload_file "$file"
+    fi
+done
+
+# Start the main loop
+while true; do
+    # Start watching local directory in background
+    inotifywait -m "$LOCAL_WATCH_DIR" -e close_write,moved_to | 
+        while read -r directory events filename; do
+            if [[ "$events" =~ "CLOSE_WRITE" ]] || [[ "$events" =~ "MOVED_TO" ]]; then
+                fullpath="$directory$filename"
+                echo "New local file detected: $fullpath"
+                if [ -f "$fullpath" ]; then
+                    echo "Starting upload of $filename..."
+                    upload_file "$fullpath"
+                fi
+            fi
+        done &
+    
+    # Store the background process ID
+    INOTIFY_PID=$!
+
+    # Check remote directory periodically
+    while true; do
+        check_remote_files
+        sleep $REMOTE_CHECK_INTERVAL
+        
+        # Check if inotifywait is still running
+        if ! kill -0 $INOTIFY_PID 2>/dev/null; then
+            echo "Local file watching stopped, restarting..."
+            break
+        fi
+    done
+
+    # If we get here, the inotifywait process died, kill it if it's somehow still running
+    kill $INOTIFY_PID 2>/dev/null
+done
